@@ -53,19 +53,18 @@ def preprocess_url(url)
   url
 end
 
-def latest_version(formula)
-  has_livecheckable = formula.livecheckable?
-  livecheck = formula.livecheck
-  livecheck_regex = livecheck.regex
-  livecheck_url = livecheck.url
+def latest_version(cask)
+  # has_livecheckable = formula.livecheckable?
+  # livecheck = formula.livecheck
+  # livecheck_regex = livecheck.regex
+  # livecheck_url = livecheck.url
 
-  urls = [livecheck_url] if livecheck_url.is_a?(String) && !livecheck_url.blank?
-  urls ||= checkable_urls(formula)
+  urls = checkable_urls(cask)
 
   if Homebrew.args.debug?
-    puts "\nFormula:          #{formula_name(formula)}"
-    puts "Head only?:       #{!formula.stable?}" unless formula.stable?
-    puts "Livecheckable?:   #{has_livecheckable ? "Yes" : "No"}"
+    puts "\nCask:              #{cask_name(cask)}"
+    # puts "Head only?:       #{!formula.stable?}" unless formula.stable?
+    # puts "Livecheckable?:   #{has_livecheckable ? "Yes" : "No"}"
   end
 
   urls.each do |original_url|
@@ -78,7 +77,7 @@ def latest_version(formula)
     end
 
     url = preprocess_url(original_url)
-    strategies = LivecheckStrategy.from_url(url, livecheck_regex.present?)
+    strategies = LivecheckStrategy.from_url(url)
     strategy = strategies[0]
 
     if Homebrew.args.debug?
@@ -87,23 +86,23 @@ def latest_version(formula)
         puts "Strategies:       #{strategies.map { |s| s::NAME }.join(", ")}"
       end
       puts "Strategy:         #{strategy.nil? ? "None" : strategy::NAME}"
-      puts "Regex:            #{livecheck_regex.inspect}\n" unless livecheck_regex.nil?
+      # puts "Regex:            #{livecheck_regex.inspect}\n" unless livecheck_regex.nil?
     end
 
     next if strategy.nil?
 
-    strategy_data = strategy.find_versions(url, livecheck_regex)
+    strategy_data = strategy.find_versions(url)
     match_version_map = strategy_data[:matches]
     regex = strategy_data[:regex]
 
     if Homebrew.args.debug?
       puts "URL (strategy):   #{strategy_data[:url]}" if strategy_data[:url] != url
-      puts "Regex (strategy): #{strategy_data[:regex].inspect}\n" if strategy_data[:regex] != livecheck_regex
+      puts "Regex (strategy): #{strategy_data[:regex].inspect}\n"
     end
 
     match_version_map.delete_if do |_match, version|
       next true if version.empty?
-      next false if has_livecheckable
+      # next false if has_livecheckable
 
       UNSTABLE_VERSION_KEYWORDS.any? do |rejection|
         version.to_s.include?(rejection)
