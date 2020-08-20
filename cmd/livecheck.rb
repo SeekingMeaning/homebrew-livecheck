@@ -44,27 +44,27 @@ module Homebrew
   end
 
   def livecheck
-    livecheck_args.parse
+    @args = livecheck_args.parse
 
-    if Homebrew.args.debug? && Homebrew.args.verbose?
+    if @args.debug? && @args.verbose?
       puts ARGV.inspect
-      puts Homebrew.args
+      puts @args
       puts ENV["HOMEBREW_LIVECHECK_WATCHLIST"] if ENV["HOMEBREW_LIVECHECK_WATCHLIST"].present?
     end
 
-    if (cmd = Homebrew.args.named.first)
+    if (cmd = @args.named.first)
       require?("livecheck/commands/#{cmd}") && return
     end
 
     casks_to_check =
-      if Homebrew.args.tap
-        Tap.fetch(Homebrew.args.tap).cask_files.map { |file| Cask::CaskLoader.load(file) }
-      # elsif Homebrew.args.installed?
+      if @args.tap
+        Tap.fetch(@args.tap).cask_files.map { |file| Cask::CaskLoader.load(file) }
+      # elsif @args.installed?
       #   Formula.installed
-      # elsif Homebrew.args.all?
+      # elsif @args.all?
       #   Formula.full_names.map { |name| Formula[name] }
-      # elsif !Homebrew.args.casks.empty?
-      #   Homebrew.args.casks
+      elsif !@args.named.to_casks.empty?
+        @args.named.to_casks
       elsif File.exist?(WATCHLIST_PATH)
         Enumerator.new do |enum|
           File.open(WATCHLIST_PATH).each do |line|
@@ -94,53 +94,53 @@ module Homebrew
     end
 
     casks_checked = casks_to_check.sort_by(&:token).map.with_index do |cask, i|
-      puts "\n----------\n" if Homebrew.args.debug? && i.positive?
+      puts "\n----------\n" if @args.debug? && i.positive?
       print_latest_version cask
     rescue => e
       Homebrew.failed = true
 
-      if Homebrew.args.json?
+      if @args.json?
         {
           "cask"  => cask_name(cask),
           "status"   => "error",
           "messages" => [e.to_s],
         }
-      elsif !Homebrew.args.quiet?
+      elsif !@args.quiet?
         onoe "#{Tty.blue}#{cask_name(cask)}#{Tty.reset}: #{e}"
         nil
       end
     end
 
-    puts JSON.generate(casks_checked.compact) if Homebrew.args.json?
+    puts JSON.generate(casks_checked.compact) if @args.json?
   end
 
   def print_latest_version(cask)
     # if formula.deprecated? && !formula.livecheckable?
-    #   if Homebrew.args.json?
+    #   if @args.json?
     #     return {
     #       "formula" => formula_name(formula),
     #       "status"  => "deprecated",
     #     }
-    #   elsif !Homebrew.args.quiet?
+    #   elsif !@args.quiet?
     #     puts "#{Tty.red}#{formula_name(formula)}#{Tty.reset} : deprecated"
     #     return
     #   end
     # end
 
     # if formula.to_s.include?("@") && !formula.livecheckable?
-    #   if Homebrew.args.json?
+    #   if @args.json?
     #     return {
     #       "formula" => formula_name(formula),
     #       "status"  => "versioned",
     #     }
-    #   elsif !Homebrew.args.quiet?
+    #   elsif !@args.quiet?
     #     puts "#{Tty.red}#{formula_name(formula)}#{Tty.reset} : versioned"
     #     return
     #   end
     # end
 
     # if !formula.stable? && !formula.any_version_installed?
-    #   if Homebrew.args.json?
+    #   if @args.json?
     #     return {
     #       "formula"  => formula_name(formula),
     #       "status"   => "error",
@@ -148,7 +148,7 @@ module Homebrew
     #         "HEAD only formula must be installed to be livecheckable",
     #       ],
     #     }
-    #   elsif !Homebrew.args.quiet?
+    #   elsif !@args.quiet?
     #     puts "#{Tty.red}#{formula_name(formula)}#{Tty.reset} : " \
     #       "HEAD only formula must be installed to be livecheckable"
     #     return
@@ -166,14 +166,14 @@ module Homebrew
     #     ""
     #   end
     #
-    #   if Homebrew.args.json?
+    #   if @args.json?
     #     json_hash = {
     #       "formula" => formula_name(formula),
     #       "status"  => "skipped",
     #     }
     #     json_hash["messages"] = [skip_msg] unless skip_msg.nil? || skip_msg.empty?
     #     return json_hash
-    #   elsif !Homebrew.args.quiet?
+    #   elsif !@args.quiet?
     #     puts "#{Tty.red}#{formula_name(formula)}#{Tty.reset} : skipped" \
     #          "#{" - #{skip_msg}" unless skip_msg.empty?}"
     #     return
@@ -188,7 +188,7 @@ module Homebrew
     latest = version_info.nil? ? nil : version_info["latest"]
 
     if latest.nil?
-      if Homebrew.args.json?
+      if @args.json?
         return {
           "cask"     => cask_name(cask),
           "status"   => "error",
@@ -208,9 +208,9 @@ module Homebrew
 
     cask_s = "#{Tty.blue}#{cask_name(cask)}#{Tty.reset}"
 
-    return if Homebrew.args.newer_only? && !is_outdated
+    return if @args.newer_only? && !is_outdated
 
-    if Homebrew.args.json?
+    if @args.json?
       json_hash = {
         "cask"    => cask_name(cask),
         "version" => {
@@ -221,7 +221,7 @@ module Homebrew
         },
       }
 
-      if Homebrew.args.verbose?
+      if @args.verbose?
         json_hash["meta"] = {}
         # json_hash["meta"]["livecheckable"] = formula.livecheckable?
         # json_hash["meta"]["head_only"] = !formula.stable? unless formula.stable?
@@ -231,7 +231,7 @@ module Homebrew
       return json_hash
     end
 
-    cask_s += " (guessed)" if Homebrew.args.verbose?
+    cask_s += " (guessed)" if @args.verbose?
     current_s =
       if is_newer_than_upstream
         "#{Tty.red}#{current}#{Tty.reset}"
